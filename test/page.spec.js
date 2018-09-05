@@ -65,12 +65,12 @@ module.exports.addTests = function({testRunner, expect, headless}) {
     });
   });
 
-  describe('Page.Events.error', function() {
-    it('should throw when page crashes', async({page}) => {
-      let error = null;
-      page.on('error', err => error = err);
-      page.goto('chrome://crash').catch(e => {});
-      await waitEvent(page, 'error');
+  describe('Page.Events.Crash', function() {
+    it('should emit when page crashes', async({page}) => {
+      const [error ] = await Promise.all([
+        waitEvent(page, 'crash'),
+        page.target().crash(),
+      ]);
       expect(error.message).toBe('Page crashed!');
     });
   });
@@ -529,6 +529,28 @@ module.exports.addTests = function({testRunner, expect, headless}) {
     it('should return response when page changes its URL after load', async({page, server}) => {
       const response = await page.goto(server.PREFIX + '/historyapi.html');
       expect(response.status()).toBe(200);
+    });
+    it('should throw when crashes during browser navigation', async({page, server}) => {
+      server.setRoute('/empty.html', (req, res) => {});
+      let navigationError = null;
+      const navigationPromise = page.goto(server.EMPTY_PAGE).catch(e => navigationError = e);
+      await server.waitForRequest('/empty.html');
+      await Promise.all([
+        page.target().crash(),
+        navigationPromise
+      ]);
+      expect(navigationError.message).toBe('Navigation failed because target crashed!');
+    });
+    it('should throw when crashes after browser commits navigation but loads resources', async({page, server}) => {
+      server.setRoute('/one-style.css', (req, res) => {});
+      let navigationError = null;
+      const navigationPromise = page.goto(server.PREFIX + '/one-style.html').catch(e => navigationError = e);
+      await server.waitForRequest('/one-style.css');
+      await Promise.all([
+        page.target().crash(),
+        navigationPromise
+      ]);
+      expect(navigationError.message).toBe('Navigation failed because target crashed!');
     });
     it('should work with subframes return 204', async({page, server}) => {
       server.setRoute('/frames/frame.html', (req, res) => {

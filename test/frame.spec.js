@@ -190,6 +190,15 @@ module.exports.addTests = function({testRunner, expect}) {
       await frame.waitForSelector('div');
     });
 
+    it('should reject if target crashes', async({page, server}) => {
+      await page.goto(server.EMPTY_PAGE);
+      let error = null;
+      let watchdog = page.waitForSelector('div').catch(e => error = e);
+      await page.target().crash();
+      await watchdog;
+      expect(error.message).toBe('waitForFunction failed: target crashed.');
+    });
+
     it('should resolve promise when node is added', async({page, server}) => {
       await page.goto(server.EMPTY_PAGE);
       const frame = page.mainFrame();
