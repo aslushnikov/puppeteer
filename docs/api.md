@@ -1212,6 +1212,32 @@ List of all available devices is available in the source code: [DeviceDescriptor
 - `mediaType` <?[string]> Changes the CSS media type of the page. The only allowed values are `'screen'`, `'print'` and `null`. Passing `null` disables media emulation.
 - returns: <[Promise]>
 
+#### page.ensureNavigation([options])
+- `options` <[Object]> Navigation parameters which might have the following properties:
+  - `timeout` <[number]> Maximum time in milliseconds to wait for navigation completing, defaults to 30 seconds, pass `0` to disable timeout. The default value can be changed by using the [page.setDefaultNavigationTimeout(timeout)](#pagesetdefaultnavigationtimeouttimeout) method.
+  - `waitUntil` <[string]|[Array]<[string]>> When to consider navigation succeeded, defaults to `load`. Given an array of event strings, navigation is considered to be successful after all events have been fired. Events can be either:
+    - `load` - consider navigation to be finished when the `load` event is fired.
+    - `domcontentloaded` - consider navigation to be finished when the `DOMContentLoaded` event is fired.
+    - `networkidle0` - consider navigation to be finished when there are no more than 0 network connections for at least `500` ms.
+    - `networkidle2` - consider navigation to be finished when there are no more than 2 network connections for at least `500` ms.
+- returns: <[Promise]>
+
+This resolved when the page finishes the last running navigation. This comes especially handy
+when dealing with pages opened in new tabs due to clicks.
+
+
+```js
+const [target] = await Promise.all([
+  browser.waitForNewTarget(target => target.type() === 'page'),
+  page.click('a[target=_blank]'), // Click a link that opens a new page
+]);
+```
+
+**NOTE** Usage of the [History API](https://developer.mozilla.org/en-US/docs/Web/API/History_API) to change the URL is considered a navigation.
+
+Shortcut for [page.mainFrame().waitForNavigation(options)](#framewaitfornavigationoptions).
+
+
 #### page.evaluate(pageFunction[, ...args])
 - `pageFunction` <[function]|[string]> Function to be evaluated in the page context
 - `...args` <...[Serializable]|[JSHandle]> Arguments to pass to `pageFunction`
