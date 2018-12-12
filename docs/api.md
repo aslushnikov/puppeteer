@@ -1225,10 +1225,9 @@ List of all available devices is available in the source code: [DeviceDescriptor
 This resolved when the page finishes the last running navigation. This comes especially handy
 when dealing with pages opened in new tabs due to clicks.
 
-
 ```js
 const [target] = await Promise.all([
-  browser.waitForNewTarget(target => target.type() === 'page'),
+  new Promise(resolve => page.once('popup', resolve),
   page.click('a[target=_blank]'), // Click a link that opens a new page
 ]);
 ```
