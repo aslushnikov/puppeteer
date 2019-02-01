@@ -523,4 +523,62 @@ module.exports.addTests = function({testRunner, expect}) {
       await navigationPromise;
     });
   });
+
+  fdescribe('Page.ensureNavigation', function() {
+    it('should work', async({page, server}) => {
+      // Hold on one-style.css to prevent load event from happenning.
+      let serverResponse = null;
+      server.setRoute('/one-style.css', (req, res) => serverResponse = res);
+      await page.goto(server.PREFIX + '/one-style.html', {waitUntil: 'domcontentloaded'});
+
+
+      // Make sure ensureNavigation fulfills once one-style.css is dispatched.
+      let complete = false;
+      const promise = page.ensureNavigation().then(() => complete = true);
+      // Make sure the tab is loaded up to 'domcontentloaded' and not 'load'.
+      await page.ensureNavigation({waitUntil: 'domcontentloaded'});
+      expect(complete).toBe(false);
+      // Fullfill one-style.css.
+      serverResponse.end('');
+      await promise;
+    });
+    it('should work when opening a new page', async({page, context, server}) => {
+      // Hold on one-style.css to prevent load event from happenning.
+      let serverResponse = null;
+      server.setRoute('/one-style.css', (req, res) => serverResponse = res);
+
+      // Setup a link that opens a new tab
+      await page.goto(server.EMPTY_PAGE);
+      await page.setContent(`<a target=_blank href='/one-style.html'>onestyle</a>`);
+      const [popup] = await Promise.all([
+        new Promise(resolve => page.once('popup', resolve)),
+        page.click('a'),
+      ]);
+      // Make sure the new tab is loaded up to 'domcontentloaded'
+      await popup.ensureNavigation({waitUntil: 'domcontentloaded'});
+
+      // Make sure ensureNavigation fulfills once one-style.css is dispatched.
+      let complete = false;
+      const promise = page.ensureNavigation().then(() => complete = true);
+      expect(complete).toBe(false);
+      serverResponse.end('');
+      await promise;
+    });
+    it('should return if navigation completed', async({page, server}) => {
+      await page.goto(server.EMPTY_PAGE);
+      await page.ensureNavigation({waitUntil: 'load'});
+      await page.ensureNavigation({waitUntil: 'domcontentloaded'});
+      await page.ensureNavigation({waitUntil: 'networkidle0'});
+      await page.ensureNavigation({waitUntil: 'networkidle2'});
+    });
+    it('should fail when exceeding maximum navigation timeout', async({page, server}) => {
+      // Hang for request to the empty.html
+      server.setRoute('/one-style.css', (req, res) => { });
+      await page.goto(server.PREFIX + '/one-style.html', {waitUntil: 'domcontentloaded'});
+      let error = null;
+      await page.ensureNavigation({timeout: 1}).catch(e => error = e);
+      expect(error.message).toContain('Navigation Timeout Exceeded: 1ms');
+      expect(error).toBeInstanceOf(TimeoutError);
+    });
+  });
 };
