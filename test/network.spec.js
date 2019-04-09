@@ -433,5 +433,16 @@ module.exports.addTests = function({testRunner, expect, CHROME}) {
       expect(response.status()).toBe(401);
     });
   });
+
+  fdescribe('Downloads', function() {
+    it('should report downloads', async({page, server}) => {
+      server.makeDownloadable('/pptr.png');
+      await page.setResponseInterception(true);
+      page.on('download', download => {
+        console.log(download.name());
+      });
+      await page.goto(server.PREFIX + '/pptr.png');
+    });
+  });
 };
 

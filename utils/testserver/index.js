@@ -82,6 +82,8 @@ class TestServer {
     this._csp = new Map();
     /** @type {!Set<string>} */
     this._gzipRoutes = new Set();
+    /** @type {!Map<string, string>} */
+    this._downloadRoutes = new Map();
     /** @type {!Map<string, !Promise>} */
     this._requestSubscribers = new Map();
   }
@@ -115,6 +117,10 @@ class TestServer {
 
   enableGzip(path) {
     this._gzipRoutes.add(path);
+  }
+
+  makeDownloadable(path, fileName = '') {
+    this._downloadRoutes.set(path, fileName);
   }
 
   /**
@@ -176,6 +182,7 @@ class TestServer {
     this._auths.clear();
     this._csp.clear();
     this._gzipRoutes.clear();
+    this._downloadRoutes.clear();
     const error = new Error('Static Server has been reset');
     for (const subscriber of this._requestSubscribers.values())
       subscriber[rejectSymbol].call(null, error);
@@ -252,6 +259,13 @@ class TestServer {
       const isTextEncoding = /^text\/|^application\/(javascript|json)/.test(mimeType);
       const contentType = isTextEncoding ? `${mimeType}; charset=utf-8` : mimeType;
       response.setHeader('Content-Type', contentType);
+      if (this._downloadRoutes.has(pathName)) {
+        const fileName = this._downloadRoutes.get(pathName);
+        if (fileName)
+          response.setHeader('Content-Disposition', `attachment; filename="${fileName}"`);
+        else
+          response.setHeader('Content-Disposition', `attachment`);
+      }
       if (this._gzipRoutes.has(pathName)) {
         response.setHeader('Content-Encoding', 'gzip');
         const zlib = require('zlib');
