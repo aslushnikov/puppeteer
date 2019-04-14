@@ -437,11 +437,19 @@ module.exports.addTests = function({testRunner, expect, CHROME}) {
   fdescribe('Downloads', function() {
     it('should report downloads', async({page, server}) => {
       server.makeDownloadable('/pptr.png');
-      await page.setResponseInterception(true);
+      //await page.setResponseInterception(true);
       page.on('download', download => {
         console.log(download.name());
       });
       await page.goto(server.PREFIX + '/pptr.png');
+    });
+    fit('should download PDFs in headful', async({page, server}) => {
+      //server.makeDownloadable('/blank.pdf');
+      //await page.setResponseInterception(true);
+      page.on('download', download => {
+        console.log(download.name());
+      });
+      await page.goto(server.PREFIX + '/blank.pdf');
     });
   });
 };
