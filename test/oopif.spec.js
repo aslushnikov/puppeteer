@@ -39,15 +39,25 @@ module.exports.addTests = function({testRunner, expect, defaultBrowserOptions, p
       state.browser = null;
     });
     xit('should report oopif frames', async function({page, server, context}) {
-      await page.goto(server.PREFIX + '/dynamic-oopif.html');
+      await page.goto(server.PREFIX + '/oopif/dynamic-oopif.html');
       expect(oopifs(context).length).toBe(1);
       expect(page.frames().length).toBe(2);
     });
     it('should load oopif iframes with subresources and request interception', async function({page, server, context}) {
       await page.setRequestInterception(true);
       page.on('request', request => request.continue());
-      await page.goto(server.PREFIX + '/dynamic-oopif.html');
+      await page.goto(server.PREFIX + '/oopif/dynamic-oopif.html');
       expect(oopifs(context).length).toBe(1);
+    });
+    fit('should load oopif iframes with subresources and request interception', async function({page, server, context}) {
+      await page.goto(server.PREFIX + '/oopif/dynamic-oopif-in-oopif.html');
+      expect(oopifs(context).length).toBe(2);
+      await page.mouse.move(50, 35);
+      await page.mouse.click(44, 34);
+      for (let i = 0; i < 100; ++i) {
+        await page.mouse.move(100, 100);
+      }
+      // await page.waitFor(1000000);
     });
   });
 };
