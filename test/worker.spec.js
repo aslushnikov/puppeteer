@@ -63,4 +63,58 @@ module.exports.addTests = function({testRunner, expect}) {
       expect(errorLog.message).toContain('this is my error');
     });
   });
+  describe_fails_ffox('Nested Workers', function() {
+    it('should report 2 workers', async function({page, server}) {
+      await Promise.all([
+        utils.waitEvent(page, 'workercreated', () => page.workers().length === 2),
+        page.goto(server.PREFIX + '/worker/nested-workers.html'),
+      ]);
+      const workers = page.workers().sort((worker1, worker2) => worker1.url().localeCompare(worker2.url()));
+      expect(workers[0].url()).toContain('/worker/main-worker.js');
+      expect(workers[1].url()).toContain('/worker/nested-worker.js');
+    });
+    it('should have correct execution contexts for nested workers', async function({page, server}) {
+      await Promise.all([
+        utils.waitEvent(page, 'workercreated', () => page.workers().length === 2),
+        page.goto(server.PREFIX + '/worker/nested-workers.html'),
+      ]);
+      const workers = page.workers().sort((worker1, worker2) => worker1.url().localeCompare(worker2.url()));
+      expect(await workers[0].evaluate(() => self.whoami)).toBe('I am main worker');
+      expect(await workers[1].evaluate(() => self.whoami)).toBe('I am nested worker');
+    });
+    it('should report errors from nested workers', async function({page, server}) {
+      const [worker] = await Promise.all([
+        utils.waitEvent(page, 'workercreated'),
+        page.goto(server.PREFIX + '/worker/worker.html'),
+      ]);
+      const errorText = 'this is my error from nested worker';
+      const [errorLog] = await Promise.all([
+        utils.waitEvent(page, 'pageerror', event => event.message.includes(errorText)),
+        worker.evaluate(errorText => new Worker(`data:text/javascript, throw new Error('${errorText}');`), errorText),
+      ]);
+      expect(errorLog.message).toContain(errorText);
+    });
+    it('should detach all workers when navigating away', async function({page, server}) {
+      await Promise.all([
+        utils.waitEvent(page, 'workercreated', () => page.workers().length === 2),
+        page.goto(server.PREFIX + '/worker/nested-workers.html'),
+      ]);
+      await Promise.all([
+        utils.waitEvent(page, 'workerdestroyed', () => page.workers().length === 0),
+        page.goto(server.EMPTY_PAGE),
+      ]);
+    });
+    it('should report console messages from nested workers', async function({page, server}) {
+      const messages = [];
+      page.on('console', msg => messages.push(msg.text()));
+      await Promise.all([
+        utils.waitEvent(page, 'console', () => messages.length === 2),
+        page.goto(server.PREFIX + '/worker/nested-workers.html'),
+      ]);
+      messages.sort();
+      expect(messages[0]).toBe('Main Worker');
+      expect(messages[1]).toBe('Nested Worker');
+    });
+  });
 };
+
